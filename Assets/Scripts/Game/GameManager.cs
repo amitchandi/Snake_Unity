@@ -151,7 +151,7 @@ public class GameManager : MonoBehaviour
                 {
                     User su = room.users.Find(u =>
                     {
-                        return u.Id != user.Id && u.Name != "Mama Snake";
+                        return u.Id != user.Id && u.Username != "Mama Snake";
                     });
                     client.GetComponent<ServerCommunication>().SendGetGameState(su.Id);
                 }
@@ -204,7 +204,9 @@ public class GameManager : MonoBehaviour
     {
         messages.GetComponent<Toast>().ShowToast(message.data["args"]["username"].ToObject<string>() + " Has Died\nDummy", 2);
         deathSound.Play();
-        client.GetComponent<ServerCommunication>().RetrieveUser();
+        
+        //TODO: fix this?
+        //client.GetComponent<ServerCommunication>().RetrieveUser();
         client.GetComponent<ServerCommunication>().GetRoom(room.id);
     }
 
@@ -293,7 +295,7 @@ public class GameManager : MonoBehaviour
                 index--;
         }
 
-        if (room.users[index].Name == "Mama Snake")
+        if (room.users[index].Username == "Mama Snake")
             ChangeSpectating(val);
         else
             spectatorGameState.userId = room.users[index].Id;
@@ -682,7 +684,9 @@ public class GameManager : MonoBehaviour
         yield return new WaitForEndOfFrame();
 
         SceneManager.LoadSceneAsync("Lobby", LoadSceneMode.Single);
-        client.GetComponent<ServerCommunication>().RetrieveUser();
+        
+        //TODO: fix this?
+        //client.GetComponent<ServerCommunication>().RetrieveUser();
     }
 
     IEnumerator ZoomCR()

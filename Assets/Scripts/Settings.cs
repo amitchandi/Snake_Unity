@@ -17,7 +17,17 @@ public class Settings : MonoBehaviour
 
             LoadFromFile();
             if (Application.platform != RuntimePlatform.Android && Application.platform != RuntimePlatform.IPhonePlayer)
-                Screen.SetResolution(savedSettings.Screen_Width, savedSettings.Screen_Height, savedSettings.Is_Full_Screen, savedSettings.Screen_Refresh_Rate);
+            {
+                if (savedSettings.Is_Full_Screen)
+                {
+                    //Screen.SetResolution(savedSettings.Screen_Width, savedSettings.Screen_Height, savedSettings.Full_Screen_Mode, savedSettings.Screen_Refresh_Rate);
+                    Screen.SetResolution(savedSettings.Screen_Width, savedSettings.Screen_Height, savedSettings.Full_Screen_Mode, savedSettings.RefreshRate);
+                }
+                else
+                {
+                    Screen.SetResolution(savedSettings.Screen_Width, savedSettings.Screen_Height, false);
+                }
+            }
         }
         else if (instance != this)
         {
@@ -49,7 +59,7 @@ public class Settings : MonoBehaviour
     {
         savedSettings.Screen_Width = resolution.width;
         savedSettings.Screen_Height = resolution.height;
-        savedSettings.Screen_Refresh_Rate = resolution.refreshRate;
+        savedSettings.RefreshRate = resolution.refreshRateRatio;
         SaveToFile();
     }
 
@@ -94,9 +104,9 @@ public class Settings : MonoBehaviour
                 SFX_Volume = 0.5f,
                 Screen_Width = 1920,
                 Screen_Height = 1080,
-                Screen_Refresh_Rate = 59,
                 Is_Full_Screen = false,
-                Full_Screen_Mode = FullScreenMode.Windowed
+                Full_Screen_Mode = FullScreenMode.Windowed,
+                RefreshRate = new RefreshRate()
             };
             SaveToFile();
         }
@@ -109,8 +119,8 @@ public class SavedSettings
     public float SFX_Volume { get; set; }
     public int Screen_Width { get; set; }
     public int Screen_Height { get; set; }
-    public int Screen_Refresh_Rate { get; set; }
     public bool Is_Full_Screen { get; set; }
     public FullScreenMode Full_Screen_Mode { get; set; }
+    public RefreshRate RefreshRate { get; set; }
 }
 

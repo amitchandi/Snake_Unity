@@ -14,7 +14,7 @@ public class UserCard : MonoBehaviour
     public void SetUser(User user)
     {
         this.user = user;
-        username.SetText(user.Name);
+        username.SetText(user.Username);
         wins.SetText("Wins: " + user.Wins);
         name = "UserCard:" + user.Id;
         ChangeReadyStatus(user.IsReady);

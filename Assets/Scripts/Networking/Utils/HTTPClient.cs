@@ -9,7 +9,7 @@ using UnityEngine;
 
 public class HTTPClient : IDisposable
 {
-    private readonly HttpClient restClient = new HttpClient();
+    private readonly HttpClient restClient = new();
     private readonly string url;
 
     public HTTPClient(string url)
@@ -97,14 +97,13 @@ public class HTTPClient : IDisposable
         return await res.Content.ReadAsStringAsync();
     }
 
-    public async Task<bool> UpdateUserName(string name, string deviceId)
+    public async Task<bool> UpdateUserName(string email, string newUsername)
     {
-        var res = await restClient.PutAsync(url + "/updateUsername",
-            new StringContent(JsonConvert.SerializeObject(new
-            {
-                name,
-                deviceId
-            }), Encoding.UTF8, "application/json"));
+        var res = await restClient.PutAsync(url + "/updateUsername", ToJSON(new
+        {
+            email,
+            newUsername
+        }));
 
         return await res.Content.ReadAsStringAsync() == "true";
     }
@@ -129,6 +128,25 @@ public class HTTPClient : IDisposable
         }
 
         return (false, "something went wrong");
+    }
+
+    public async Task<bool> Register(string email, string username, string password)
+    {
+        var res = await restClient.PostAsync(url + "/createUser", ToJSON(new
+        {
+            email,
+            username,
+            password
+        }));
+
+        var str = await res.Content.ReadAsStringAsync();
+        Debug.Log(str);
+        if (res.StatusCode == HttpStatusCode.Created)
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private StringContent ToJSON(object o)

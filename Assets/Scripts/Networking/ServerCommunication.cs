@@ -40,7 +40,7 @@ public class ServerCommunication : MonoBehaviour
     // JWT
     string JWT;
 
-    User user;
+    User user = new();
     Room room;
 
     public bool isLoading = true;
@@ -66,7 +66,7 @@ public class ServerCommunication : MonoBehaviour
             // // Messaging
             // Lobby = new LobbyMessaging(this);
 
-            //ConnectToServer();
+            ConnectToServer();
         }
         else if (instance != this)
         {
@@ -88,10 +88,10 @@ public class ServerCommunication : MonoBehaviour
         //yield return new WaitWhile(() => JWT == null);
         //Debug.Log(JWT);
 
-        RetrieveUser();
-        yield return new WaitWhile(() => user == null);
-        Debug.Log(user);
-
+        //RetrieveUser();
+        //yield return new WaitWhile(() => user == null);
+        //Debug.Log(user);
+        yield return null;
         isLoading = false;
     }
 
@@ -143,32 +143,27 @@ public class ServerCommunication : MonoBehaviour
             case LobbyMessaging.Echo:
                 Lobby.OnEchoMessage?.Invoke(JsonUtility.FromJson<EchoMessageModel>(message.data.ToString()));
                 break;
-            case "getRoom":
-                room = message.data["room"].ToObject<Room>();
-                Lobby.OnGetRoom?.Invoke(message);
-                break;
-            case "joinRoom":
-                room = message.data["room"].ToObject<Room>();
-                Debug.Log("Joined:" + room);
-                Lobby.OnJoinRoom?.Invoke(message);
-                break;
-            case "leaveRoom":
-                string userId = message.data["userId"].ToString();
-                if (userId == user.Id)
-                {
-                    room = null;
-                    user.IsReady = false;
-                }
-                Lobby.OnLeaveRoom?.Invoke(message);
-                break;
-            case "deleteRoom":
-                Lobby.OnDeleteRoom?.Invoke();
-                break;
-            case "setReadyStatus":
-                room = message.data["room"].ToObject<Room>();
-                RetrieveUser();
-                Lobby.OnSetReady?.Invoke(message);
-                break;
+
+            //case "getRoom":
+            //    room = message.data["room"].ToObject<Room>();
+            //    Lobby.OnGetRoom?.Invoke(message);
+            //    break;
+            //case "joinRoom":
+            //    room = message.data["room"].ToObject<Room>();
+            //    Debug.Log("Joined:" + room);
+            //    Lobby.OnJoinRoom?.Invoke(message);
+            //    break;
+            //case "leaveRoom":
+            //    string userId = message.data["userId"].ToString();
+            //    if (userId == user.Id)
+            //    {
+            //        room = null;
+            //        user.IsReady = false;
+            //    }
+            //    Lobby.OnLeaveRoom?.Invoke(message);
+            //    break;
+            
+            
             case "eatPellet":
                 Lobby.OnEatPellet?.Invoke(message);
                 break;
@@ -210,7 +205,7 @@ public class ServerCommunication : MonoBehaviour
     /// </summary>
     public async void ConnectToServer()
     {
-        await client.Connect();
+        //await client.Connect();
         StartCoroutine(Init());
     }
 
@@ -234,7 +229,7 @@ public class ServerCommunication : MonoBehaviour
     /// <summary>
     /// Method which sends data through websocket
     /// </summary>
-    /// <param name="event_name">Event Name</param>
+    /// <param name="event_name">Event Username</param>
     /// /// <param name="event_data">Event Data (parameters)</param>
     public void Send(string event_name, JObject event_data)
     {
@@ -274,7 +269,7 @@ public class ServerCommunication : MonoBehaviour
 
     public string GetName()
     {
-        return user.Name;
+        return user == null ? "" : user.Username;
     }
 
     public async Task<Dictionary<string, Room>> GetRooms()
@@ -307,7 +302,7 @@ public class ServerCommunication : MonoBehaviour
             roomId = room.id,
             args = new
             {
-                username = user.Name,
+                username = user.Username,
                 message
             }
         }));
@@ -400,7 +395,7 @@ public class ServerCommunication : MonoBehaviour
             args = new
             {
                 userId = user.Id,
-                username = user.Name
+                username = user.Username
             }
         }));
     }
@@ -418,7 +413,7 @@ public class ServerCommunication : MonoBehaviour
 
     public async Task<Room> CreateRoom(int wallsToStart)
     {
-        room = await CreateRoomRequest(user.Name + "'s Room", true, user.Id, wallsToStart);
+        room = await CreateRoomRequest(user.Username + "'s Room", true, user.Id, wallsToStart);
         return room;
     }
 
@@ -440,32 +435,47 @@ public class ServerCommunication : MonoBehaviour
         return user;
     }
 
-    public async void RetrieveUser()
-    {
-        user = await GetUserRequest(SystemInfo.deviceUniqueIdentifier);
-        if (user == null)
-        {
-            await CreateUserRequest(SystemInfo.deviceUniqueIdentifier, "name");
-            RetrieveUser();
-        }
-    }
+    //public async void RetrieveUser()
+    //{
+    //    user = await GetUserRequest(SystemInfo.deviceUniqueIdentifier);
+    //    if (user == null)
+    //    {
+    //        await CreateUserRequest(SystemInfo.deviceUniqueIdentifier, "name");
+    //        RetrieveUser();
+    //    }
+    //}
 
     public async void UpdateUsername(string username)
     {
-        bool updated = await UpdateUsernameRequest(username, SystemInfo.deviceUniqueIdentifier);
+        bool updated = await UpdateUsernameRequest(user.Email, username);
         if (updated)
-            user.Name = username;
+            user.Username = username;
     }
 
     public async Task<bool> Login(string email, string password)
     {
-        var res = await httpClient.Login(email, password);
-        if (res.valid)
+        var (valid, content) = await httpClient.Login(email, password);
+        if (valid)
         {
-            var json = JObject.Parse(res.content);
+            var json = JObject.Parse(content);
             JWT = (string)json["token"];
+            user.Username = (string)json["username"];
+            user.Email = (string)json["email"];
+            user.Id = (string)json["userId"];
+            user.Wins = (int)json["wins"];
+            user.GamesPlayed = (int)json["gamesPlayed"];
         }
         return true;
+    }
+
+    public async Task<bool> Register(string email, string username, string password)
+    {
+        var res = await httpClient.Register(email, username, password);
+        if (res)
+        {
+            return await Login(email, password);
+        }
+        return false;
     }
 
     public void AddWin()
@@ -509,9 +519,9 @@ public class ServerCommunication : MonoBehaviour
         return JsonConvert.DeserializeObject<Room>(await httpClient.CreateRoom(roomName, isGameRoom, ownerId, wallsToStart));
     }
 
-    private async Task<bool> UpdateUsernameRequest(string name, string deviceId)
+    private async Task<bool> UpdateUsernameRequest(string name, string newUsername)
     {
-        return await httpClient.UpdateUserName(name, deviceId);
+        return await httpClient.UpdateUserName(name, newUsername);
     }
 
     //private async Task<bool> LoginRequest(string email, string password)

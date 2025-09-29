@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.ComponentModel;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -8,9 +9,15 @@ using static TMPro.TMP_Dropdown;
 
 public class Menu : MonoBehaviour
 {
-    public TMP_InputField nameField;
+    public TMP_InputField usernameField;
+
     public TMP_InputField loginEmailField;
     public TMP_InputField loginPasswordField;
+
+    public TMP_InputField registerEmailField;
+    public TMP_InputField registerUsernameField;
+    public TMP_InputField registerPasswordField;
+    public TMP_InputField registerPasswordConfirmField;
 
     public GameObject Lobby;
     public GameObject resolutionRow;
@@ -26,6 +33,13 @@ public class Menu : MonoBehaviour
     public AudioSource menuClick;
     public AudioSource menuTheme;
     public AudioSource wallDropSound;
+
+    public GameObject MainMenu;
+    public GameObject FindGameMenu;
+    public GameObject SettingsMenu;
+    //public GameObject LobbiesMenu;
+    public GameObject LoginMenu;
+    public GameObject RegisterMenu;
 
     GameObject client;
     GameObject settings;
@@ -59,9 +73,10 @@ public class Menu : MonoBehaviour
         settings = GameObject.Find("Settings");
         ServerCommunication sc = client.GetComponent<ServerCommunication>();
         yield return new WaitWhile(() => sc.isLoading);
-        nameField.onValueChanged.AddListener(UpdateName);
-        string name = sc.GetName();
-        nameField.SetTextWithoutNotify(name);
+        usernameField.onValueChanged.AddListener(UpdateName);
+        
+        //string name = sc.GetName();
+        //usernameField.SetTextWithoutNotify(name);
 
         LoadSettings();
 
@@ -86,9 +101,9 @@ public class Menu : MonoBehaviour
             Resolution resolution = Screen.resolutions[index];
             settings.GetComponent<Settings>().ChangeScreenResolution(resolution);
             if (isFullscreen.isOn)
-                Screen.SetResolution(resolution.width, resolution.height, (FullScreenMode)fullsDropdown.value, resolution.refreshRate);
+                Screen.SetResolution(resolution.width, resolution.height, (FullScreenMode)fullsDropdown.value, resolution.refreshRateRatio);
             else
-                Screen.SetResolution(resolution.width, resolution.height, isFullscreen.isOn, resolution.refreshRate);
+                Screen.SetResolution(resolution.width, resolution.height, false);
         });
 
         fullsDropdown.options.AddRange(Array.ConvertAll(Enum.GetNames(typeof(FullScreenMode)), mode => new OptionData(mode)));
@@ -96,16 +111,16 @@ public class Menu : MonoBehaviour
         fullsDropdown.onValueChanged.AddListener((int index) =>
         {
             settings.GetComponent<Settings>().ChangeFullscreen(isFullscreen.isOn, (FullScreenMode)index);
-            Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, (FullScreenMode)index, Screen.currentResolution.refreshRate);
+            Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, (FullScreenMode)index, Screen.currentResolution.refreshRateRatio);
         });
 
         isFullscreen.onValueChanged.AddListener((bool isFullscreen) =>
         {
             settings.GetComponent<Settings>().ChangeFullscreen(isFullscreen, (FullScreenMode)fullsDropdown.value);
             if (isFullscreen)
-                Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, (FullScreenMode)fullsDropdown.value, Screen.currentResolution.refreshRate);
+                Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, (FullScreenMode)fullsDropdown.value, Screen.currentResolution.refreshRateRatio);
             else
-                Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, isFullscreen, Screen.currentResolution.refreshRate);
+                Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, false);
             fullsDropdown.interactable = isFullscreen;
         });
 
@@ -161,7 +176,7 @@ public class Menu : MonoBehaviour
             for (int i = 0; i < Screen.resolutions.Length; i++)
             {
                 Resolution res = Screen.resolutions[i];
-                if (settingsScript.savedSettings.Screen_Width == res.width && settingsScript.savedSettings.Screen_Height == res.height && settingsScript.savedSettings.Screen_Refresh_Rate == res.refreshRate)
+                if (settingsScript.savedSettings.Screen_Width == res.width && settingsScript.savedSettings.Screen_Height == res.height && settingsScript.savedSettings.RefreshRate.Equals(res.refreshRateRatio))
                     resDropdown.value = i;
             }
 
@@ -180,11 +195,27 @@ public class Menu : MonoBehaviour
     {
         var sc = client.GetComponent<ServerCommunication>();
         await sc.Login(loginEmailField.text, loginPasswordField.text);
+        usernameField.SetTextWithoutNotify(sc.GetUser().Username);
+
+        LoginMenu.SetActive(false);
+        MainMenu.SetActive(true);
     }
 
-    public void Register()
+    public async void Register()
     {
+        var sc = client.GetComponent<ServerCommunication>();
+        if (registerPasswordField.text != registerPasswordConfirmField.text)
+        {
+            Debug.LogError("Passwords dont match");
+            //TODO: implement Error message in UI about mismatch passwords
 
+            return;
+        }
+        await sc.Register(registerEmailField.text, registerUsernameField.text, registerPasswordField.text);
+        usernameField.SetTextWithoutNotify(sc.GetUser().Username);
+
+        RegisterMenu.SetActive(false);
+        MainMenu.SetActive(true);
     }
     #endregion
 }
