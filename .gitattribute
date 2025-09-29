@@ -1,0 +1,18 @@
+# Text files
+*.cs text
+*.shader text
+*.txt text
+*.json text
+*.xml text
+*.md text
+
+# Binary files
+*.png binary
+*.jpg binary
+*.fbx binary
+*.mp4 binary
+*.wav binary
+*.ogg binary
+*.prefab binary
+*.mat binary
+*.unity binary
