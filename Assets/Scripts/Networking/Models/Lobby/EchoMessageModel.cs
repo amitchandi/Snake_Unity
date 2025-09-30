@@ -1,5 +1,5 @@
 ﻿/// <summary>
-/// Echo message model.
+/// ECHO message model.
 /// </summary>
 [System.Serializable]
 public class EchoMessageModel

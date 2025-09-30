@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Assets.Scripts;
+using System;
 using System.Collections;
 using System.ComponentModel;
 using TMPro;
@@ -41,16 +42,14 @@ public class Menu : MonoBehaviour
     public GameObject LoginMenu;
     public GameObject RegisterMenu;
 
-    GameObject client;
-    GameObject settings;
+    GameObject ClientObject;
+    ServerCommunication ServerCommunication;
 
-    public void ClickMenu()
-    {
-        menuClick.Play();
-    }
+    GameObject SettingsObject;
+    Settings SettingsScript;
 
     // Start is called before the first frame update
-    void Start()
+    private void Start()
     {
         StartCoroutine(LoadServerCommunication());
     }
@@ -62,19 +61,29 @@ public class Menu : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    private void Update()
     {
         
     }
 
+    private void OnDestroy()
+    {
+        ResetGameMessaging();
+    }
+
     IEnumerator LoadServerCommunication()
     {
-        client = GameObject.Find("Client");
-        settings = GameObject.Find("Settings");
-        ServerCommunication sc = client.GetComponent<ServerCommunication>();
-        yield return new WaitWhile(() => sc.isLoading);
+        ClientObject = GameObject.Find("Client");
+        ServerCommunication = ClientObject.GetComponent<ServerCommunication>();
+
+        SettingsObject = GameObject.Find("Settings");
+        SettingsScript = SettingsObject.GetComponent<Settings>();
+
+        yield return null;
+        //yield return new WaitWhile(() => ServerCommunication.isLoading);
         usernameField.onValueChanged.AddListener(UpdateName);
         
+        //TODO: Implement auto login
         //string name = sc.GetName();
         //usernameField.SetTextWithoutNotify(name);
 
@@ -82,13 +91,13 @@ public class Menu : MonoBehaviour
 
         BGM_Slider.onValueChanged.AddListener((float volume) =>
         {
-            settings.GetComponent<Settings>().ChangeBGMVolume(volume);
+            SettingsScript.ChangeBGMVolume(volume);
             menuTheme.volume = volume * 0.5f;
         });
 
         SFX_Slider.onValueChanged.AddListener((float volume) =>
         {
-            settings.GetComponent<Settings>().ChangeSFXVolume(volume);
+            SettingsScript.ChangeSFXVolume(volume);
             wallDropSound.volume = volume * 0.5f;
             wallDropSound.time = 0.5f;
             wallDropSound.Play();
@@ -99,7 +108,7 @@ public class Menu : MonoBehaviour
         resDropdown.onValueChanged.AddListener((int index) =>
         {
             Resolution resolution = Screen.resolutions[index];
-            settings.GetComponent<Settings>().ChangeScreenResolution(resolution);
+            SettingsScript.ChangeScreenResolution(resolution);
             if (isFullscreen.isOn)
                 Screen.SetResolution(resolution.width, resolution.height, (FullScreenMode)fullsDropdown.value, resolution.refreshRateRatio);
             else
@@ -110,13 +119,13 @@ public class Menu : MonoBehaviour
 
         fullsDropdown.onValueChanged.AddListener((int index) =>
         {
-            settings.GetComponent<Settings>().ChangeFullscreen(isFullscreen.isOn, (FullScreenMode)index);
+            SettingsScript.ChangeFullscreen(isFullscreen.isOn, (FullScreenMode)index);
             Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, (FullScreenMode)index, Screen.currentResolution.refreshRateRatio);
         });
 
         isFullscreen.onValueChanged.AddListener((bool isFullscreen) =>
         {
-            settings.GetComponent<Settings>().ChangeFullscreen(isFullscreen, (FullScreenMode)fullsDropdown.value);
+            SettingsScript.ChangeFullscreen(isFullscreen, (FullScreenMode)fullsDropdown.value);
             if (isFullscreen)
                 Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, (FullScreenMode)fullsDropdown.value, Screen.currentResolution.refreshRateRatio);
             else
@@ -127,46 +136,27 @@ public class Menu : MonoBehaviour
         menuTheme.Play();
     }
 
-    IEnumerator LoadLobby()
-    {
-        yield return new WaitWhile(() => client.GetComponent<ServerCommunication>().GetRoom() == null);
-        SceneManager.LoadSceneAsync("Lobby", LoadSceneMode.Single);
-    }
+    //IEnumerator LoadLobby()
+    //{
+    //    yield return new WaitWhile(() => ServerCommunication.GetRoom() == null);
+    //    SceneManager.LoadSceneAsync("Lobby", LoadSceneMode.Single);
+    //}
 
     void UpdateName(string name)
     {
-        var sc = client.GetComponent<ServerCommunication>();
-        sc.UpdateUsername(name);
+        ServerCommunication.UpdateUsername(name);
     }
 
-    public async void GetRooms()
-    {
-        var lobbiesPanel = GameObject.Find("LobbiesContent").transform;
-
-        foreach (Transform child in lobbiesPanel)
-            Destroy(child.gameObject);
-
-        var rooms = await client.GetComponent<ServerCommunication>().GetRooms();
-        foreach (var kv in rooms)
-        {
-            var x = Instantiate(Lobby, lobbiesPanel);
-            x.GetComponent<Lobby>().SetRoom(kv.Value);
-            Debug.Log(kv);
-        }
-    }
-
-    public void StartLobby()
-    {
-        StartCoroutine(LoadLobby());
-    }
+    //public void StartLobby()
+    //{
+    //    StartCoroutine(LoadLobby());
+    //}
 
 
     public void LoadSettings()
     {
-        Settings settingsScript = settings.GetComponent<Settings>();
-
-        float BGM_Volume = settingsScript.savedSettings.BGM_Volume;
-        float SFX_Volume = settingsScript.savedSettings.SFX_Volume;
+        float BGM_Volume = SettingsScript.savedSettings.BGM_Volume;
+        float SFX_Volume = SettingsScript.savedSettings.SFX_Volume;
         BGM_Slider.value = BGM_Volume;
         SFX_Slider.value = SFX_Volume;
         menuTheme.volume = BGM_Volume * 0.5f;
@@ -176,12 +166,12 @@ public class Menu : MonoBehaviour
             for (int i = 0; i < Screen.resolutions.Length; i++)
             {
                 Resolution res = Screen.resolutions[i];
-                if (settingsScript.savedSettings.Screen_Width == res.width && settingsScript.savedSettings.Screen_Height == res.height && settingsScript.savedSettings.RefreshRate.Equals(res.refreshRateRatio))
+                if (SettingsScript.savedSettings.Screen_Width == res.width && SettingsScript.savedSettings.Screen_Height == res.height && SettingsScript.savedSettings.RefreshRate.Equals(res.refreshRateRatio))
                     resDropdown.value = i;
             }
 
-            isFullscreen.isOn = settingsScript.savedSettings.Is_Full_Screen;
-            fullsDropdown.interactable = settingsScript.savedSettings.Is_Full_Screen;
+            isFullscreen.isOn = SettingsScript.savedSettings.Is_Full_Screen;
+            fullsDropdown.interactable = SettingsScript.savedSettings.Is_Full_Screen;
         }
     }
 
@@ -193,9 +183,8 @@ public class Menu : MonoBehaviour
 
     public async void Login()
     {
-        var sc = client.GetComponent<ServerCommunication>();
-        await sc.Login(loginEmailField.text, loginPasswordField.text);
-        usernameField.SetTextWithoutNotify(sc.GetUser().Username);
+        await ServerCommunication.Login(loginEmailField.text, loginPasswordField.text);
+        usernameField.SetTextWithoutNotify(ServerCommunication.GetUser().Username);
 
         LoginMenu.SetActive(false);
         MainMenu.SetActive(true);
@@ -203,7 +192,6 @@ public class Menu : MonoBehaviour
 
     public async void Register()
     {
-        var sc = client.GetComponent<ServerCommunication>();
         if (registerPasswordField.text != registerPasswordConfirmField.text)
         {
             Debug.LogError("Passwords dont match");
@@ -211,11 +199,42 @@ public class Menu : MonoBehaviour
 
             return;
         }
-        await sc.Register(registerEmailField.text, registerUsernameField.text, registerPasswordField.text);
-        usernameField.SetTextWithoutNotify(sc.GetUser().Username);
+        await ServerCommunication.Register(registerEmailField.text, registerUsernameField.text, registerPasswordField.text);
+        usernameField.SetTextWithoutNotify(ServerCommunication.GetUser().Username);
 
         RegisterMenu.SetActive(false);
         MainMenu.SetActive(true);
+    }
+
+    public void ClickMenu()
+    {
+        menuClick.Play();
+    }
+
+    public async void FindGameClicked()
+    {
+        await ServerCommunication.ConnectToServer();
+        InitGameMessaging();
+    }
+    #endregion
+
+    #region GameMessaging
+    private void InitGameMessaging()
+    {
+        Debug.Log("InitGameMessaging");
+        Debug.Log(ServerCommunication.Messaging);
+        ServerCommunication.Messaging.OnStartGame += OnStartGame;
+    }
+
+    private void ResetGameMessaging()
+    {
+        ServerCommunication.Messaging.OnStartGame -= OnStartGame;
+    }
+
+    private void OnStartGame()
+    {
+        Debug.Log("Start Game");
+        SceneManager.LoadSceneAsync(Scenes.GAME, LoadSceneMode.Single);
     }
     #endregion
 }

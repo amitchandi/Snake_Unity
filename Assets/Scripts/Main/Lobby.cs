@@ -19,6 +19,6 @@ public class Lobby : MonoBehaviour
     public void JoinRoom()
     {
         GameObject.Find("Client").GetComponent<ServerCommunication>().JoinRoom(room.id);
-        GameObject.Find("Menu").GetComponent<Menu>().StartLobby();
+        //GameObject.Find("Menu").GetComponent<Menu>().StartLobby();
     }
 }

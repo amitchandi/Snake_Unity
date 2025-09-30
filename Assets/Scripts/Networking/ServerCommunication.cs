@@ -1,9 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -27,7 +25,7 @@ public class ServerCommunication : MonoBehaviour
     private bool useLocalhost = true;
 
     // Address used in code
-    private string host => useLocalhost ? "localhost" : hostIP;
+    private string Host => useLocalhost ? "localhost" : hostIP;
     // Final server address
     private string server;
 
@@ -38,17 +36,16 @@ public class ServerCommunication : MonoBehaviour
     private HTTPClient httpClient;
 
     // JWT
-    string JWT;
+    string JWT { get; set; }
 
     User user = new();
     Room room;
-
-    public bool isLoading = true;
     //
 
     // Class with messages for "lobby"
-    public LobbyMessaging Lobby { private set; get; }
+    public GameMessaging Messaging { private set; get; }
 
+    #region MonoBehaviour
     /// <summary>
     /// Unity method called on initialization
     /// </summary>
@@ -59,20 +56,29 @@ public class ServerCommunication : MonoBehaviour
             instance = this;
             DontDestroyOnLoad(this);
 
-            server = host + ":" + port;
-             client = new WsClient("ws://" + server);
+            server = Host + ":" + port;
             httpClient = new HTTPClient("http://" + server);
 
             // // Messaging
-            // Lobby = new LobbyMessaging(this);
-
-            ConnectToServer();
+            // Messaging = new GameMessaging(this);
         }
         else if (instance != this)
         {
             DestroySelf();
         }
     }
+
+    private async void OnDestroy()
+    {
+        Debug.Log("ServerCommunication Destroy.");
+        await CloseConnectionToServer();
+    }
+
+    //private async void OnApplicationQuit()
+    //{
+    //    await CloseConnectionToServer();
+    //}
+    #endregion
 
     private void DestroySelf()
     {
@@ -82,37 +88,15 @@ public class ServerCommunication : MonoBehaviour
             DestroyImmediate(this);
     }
 
-    IEnumerator Init()
-    {
-        //GetToken();
-        //yield return new WaitWhile(() => JWT == null);
-        //Debug.Log(JWT);
-
-        //RetrieveUser();
-        //yield return new WaitWhile(() => user == null);
-        //Debug.Log(user);
-        yield return null;
-        isLoading = false;
-    }
-
-    private void OnApplicationQuit()
-    {
-        if (room != null)
-        {
-            LeaveRoom();
-        }
-        CloseConnectionToServer();
-    }
-
     /// <summary>
     /// Unity method called every frame
     /// </summary>
     private void Update()
     {
-        if (client != null && !client.receiveQueue.IsEmpty)
+        if (client != null && !client.ReceiveQueue.IsEmpty)
         {
             // Check if server send new messages
-            var cqueue = client.receiveQueue;
+            var cqueue = client.ReceiveQueue;
             string msg;
             while (cqueue.TryPeek(out msg))
             {
@@ -131,99 +115,108 @@ public class ServerCommunication : MonoBehaviour
     {
         Debug.Log("Server: " + msg);
 
-        // Deserializing message from the server
-        var message = JsonConvert.DeserializeObject<DataModel>(msg);
-
-        // Picking correct method for message handling
-        switch (message.@event)
+        try
         {
-            case LobbyMessaging.Register:
-                Lobby.OnConnectedToServer?.Invoke();
-                break;
-            case LobbyMessaging.Echo:
-                Lobby.OnEchoMessage?.Invoke(JsonUtility.FromJson<EchoMessageModel>(message.data.ToString()));
-                break;
+            // Deserializing message from the server
+            var message = JsonConvert.DeserializeObject<DataModel>(msg);
 
-            //case "getRoom":
-            //    room = message.data["room"].ToObject<Room>();
-            //    Lobby.OnGetRoom?.Invoke(message);
-            //    break;
-            //case "joinRoom":
-            //    room = message.data["room"].ToObject<Room>();
-            //    Debug.Log("Joined:" + room);
-            //    Lobby.OnJoinRoom?.Invoke(message);
-            //    break;
-            //case "leaveRoom":
-            //    string userId = message.data["userId"].ToString();
-            //    if (userId == user.Id)
-            //    {
-            //        room = null;
-            //        user.IsReady = false;
-            //    }
-            //    Lobby.OnLeaveRoom?.Invoke(message);
-            //    break;
+            // Picking correct method for message handling
+            switch (message.@event)
+            {
+                case GameMessaging.REGISTER:
+                    Messaging.OnConnectedToServer?.Invoke();
+                    break;
+                case GameMessaging.ECHO:
+                    Messaging.OnEchoMessage?.Invoke(JsonUtility.FromJson<EchoMessageModel>(message.data.ToString()));
+                    break;
+
+                //case "getRoom":
+                //    room = message.data["room"].ToObject<Room>();
+                //    Messaging.OnGetRoom?.Invoke(message);
+                //    break;
+                //case "joinRoom":
+                //    room = message.data["room"].ToObject<Room>();
+                //    Debug.Log("Joined:" + room);
+                //    Messaging.OnJoinRoom?.Invoke(message);
+                //    break;
+                //case "leaveRoom":
+                //    string userId = message.data["userId"].ToString();
+                //    if (userId == user.Id)
+                //    {
+                //        room = null;
+                //        user.IsReady = false;
+                //    }
+                //    Messaging.OnLeaveRoom?.Invoke(message);
+                //    break;
             
             
-            case "eatPellet":
-                Lobby.OnEatPellet?.Invoke(message);
-                break;
-            case "die":
-                Lobby.OnDie?.Invoke(message);
-                break;
-            case "chatMessage":
-                Lobby.OnChatMessage?.Invoke(message);
-                break;
-            case "startGame":
-                Lobby.OnStartGame?.Invoke();
-                break;
-            case "winner":
-                Lobby.OnWin?.Invoke(message);
-                break;
-            case "reset":
-                Lobby.OnReset?.Invoke(message);
-                break;
-            case "zoom":
-                Lobby.OnZoom?.Invoke(message);
-                break;
-            case "slow":
-                Lobby.OnSlow?.Invoke(message);
-                break;
-            case "invincible":
-                Lobby.OnInvincible?.Invoke(message);
-                break;
-            case "getGameState":
-                Lobby.OnGetGameState?.Invoke(message);
-                break;
-            default:
-                Debug.LogError("Unknown type of method: " + message.@event);
-                break;
+                case "eatPellet":
+                    Messaging.OnEatPellet?.Invoke(message);
+                    break;
+                case "die":
+                    Messaging.OnDie?.Invoke(message);
+                    break;
+                case "chatMessage":
+                    Messaging.OnChatMessage?.Invoke(message);
+                    break;
+                case "winner":
+                    Messaging.OnWin?.Invoke(message);
+                    break;
+                case "reset":
+                    Messaging.OnReset?.Invoke(message);
+                    break;
+                case "zoom":
+                    Messaging.OnZoom?.Invoke(message);
+                    break;
+                case "slow":
+                    Messaging.OnSlow?.Invoke(message);
+                    break;
+                case "invincible":
+                    Messaging.OnInvincible?.Invoke(message);
+                    break;
+                case "getGameState":
+                    Messaging.OnGetGameState?.Invoke(message);
+                    break;
+
+                
+                case GameMessaging.START_GAME:
+                    Messaging.OnStartGame?.Invoke();
+                    break;
+                case GameMessaging.LOBBY_PLAYERS:
+                    Messaging.OnLobbyPlayers?.Invoke(message);
+                    break;
+                case GameMessaging.LOBBY_JOINED:
+                    Messaging.OnLobbyJoined?.Invoke(message);
+                    break;
+
+                default:
+                    Debug.LogError("Unknown type of method: " + message.@event);
+                    break;
+            }
+        }
+        catch (Exception)
+        {
+            Debug.LogError("Invalid JSON");
         }
     }
 
     /// <summary>
     /// Call this method to connect to the server
     /// </summary>
-    public async void ConnectToServer()
+    public async Task ConnectToServer()
     {
-        //await client.Connect();
-        StartCoroutine(Init());
+        client = new WsClient("ws://" + server, JWT);
+        await client.ConnectAsync();
+        Messaging = new GameMessaging(this);
     }
 
     /// <summary>
     /// Call this method to connect to the server
     /// </summary>
-    public async void CloseConnectionToServer()
+    public async Task CloseConnectionToServer()
     {
-        if (client != null)
-        {
-            if (client.IsConnectionOpen())
-                await client.Close();
-            client.Dispose();
-        }
-        if (httpClient != null)
-        {
-            httpClient.Dispose();
-        }
+        await client.CloseAsync();
+        httpClient?.Dispose();
     }
 
     /// <summary>
@@ -458,6 +451,7 @@ public class ServerCommunication : MonoBehaviour
         if (valid)
         {
             var json = JObject.Parse(content);
+            Debug.Log(json["token"]);
             JWT = (string)json["token"];
             user.Username = (string)json["username"];
             user.Email = (string)json["email"];

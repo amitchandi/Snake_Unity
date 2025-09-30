@@ -3,68 +3,64 @@ using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
-/// Class holding lobby messages.
+/// Class holding game messages.
 /// </summary>
-public class LobbyMessaging : BaseMessaging
+public class GameMessaging : BaseMessaging
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="T:LobbyMessaging"/> class.
+    /// Initializes a new instance of the <see cref="T:GameMessaging"/> class.
     /// </summary>
     /// <param name="client">Client.</param>
-    public LobbyMessaging(ServerCommunication client) : base(client) { }
+    public GameMessaging(ServerCommunication client) : base(client) { }
 
-    // Register messages
-    public const string Register = "register";
+    // REGISTER messages
+    public const string REGISTER = "register";
     public UnityAction OnConnectedToServer;
 
-    // Echo messages
-    public const string Echo = "echo";
+    // ECHO messages
+    public const string ECHO = "echo";
     public UnityAction<EchoMessageModel> OnEchoMessage;
 
+    public UnityAction<DataModel> OnGetGameState;
     // On Get Room
     public UnityAction<DataModel> OnGetRoom;
-
     // On Join Room
     public UnityAction<DataModel> OnJoinRoom;
-
     // On Leave Room
     public UnityAction<DataModel> OnLeaveRoom;
-
     // On Delete Room
     public UnityAction OnDeleteRoom;
-
     // On Set Ready Status
     public UnityAction<DataModel> OnSetReady;
 
     // On Chat Message
     public UnityAction<DataModel> OnChatMessage;
 
-    // On Start Game
-    public UnityAction OnStartGame;
 
     // On Eat Pellet
     public UnityAction<DataModel> OnEatPellet;
-
     // On Die
     public UnityAction<DataModel> OnDie;
-
     // On Win
     public UnityAction<DataModel> OnWin;
-
     // On Reset
     public UnityAction<DataModel> OnReset;
-
     // On Zoom
     public UnityAction<DataModel> OnZoom;
-
     // On Slow
     public UnityAction<DataModel> OnSlow;
-
     // On Invincible
     public UnityAction<DataModel> OnInvincible;
 
-    // On GetGameState
-    public UnityAction<DataModel> OnGetGameState;
+
+    public const string START_GAME = "startGame";
+    public UnityAction OnStartGame;
+
+    public const string LOBBY_PLAYERS = "lobbyPlayers";
+    public UnityAction<DataModel> OnLobbyPlayers;
+
+    public const string LOBBY_JOINED = "lobbyJoined";
+    public UnityAction<DataModel> OnLobbyJoined;
 
     /// <summary>
     /// Sends echo message to the server.

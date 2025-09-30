@@ -9,63 +9,65 @@ using UnityEngine;
 
 /// <summary>
 /// WebSocket Client class.
-/// Responsible for handling communication between server and client.
+/// Responsible for handling communication between server and ClientObject.
 /// </summary>
 public class WsClient : IDisposable
 {
     // WebSocket
-    private ClientWebSocket ws = new ClientWebSocket();
-    private UTF8Encoding encoder; // For websocket text message encoding.
+    private readonly ClientWebSocket ws = new();
+    private CancellationTokenSource cts;
+    private readonly UTF8Encoding encoder = new(); // For websocket text message encoding.
     private const UInt64 MAXREADSIZE = 1 * 1024 * 1024;
 
     // Server address
-    private Uri serverUri;
+    private readonly Uri ServerUri;
 
     //JWT
-    private string JWT;
+    private readonly string JWT;
 
     // Queues
-    public ConcurrentQueue<String> receiveQueue { get; }
-    public BlockingCollection<ArraySegment<byte>> sendQueue { get; }
+    public ConcurrentQueue<string> ReceiveQueue { get; }
+    public BlockingCollection<ArraySegment<byte>> SendQueue { get; }
 
     // Threads
-    private Thread receiveThread { get; set; }
-    private Thread sendThread { get; set; }
+    private Thread ReceiveThread { get; set; }
+    private Thread SendThread { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="T:WsClient"/> class.
     /// </summary>
     /// <param name="serverURL">Server URL.</param>
-    public WsClient(string serverURL)
+    public WsClient(string serverURL, string JWT)
     {
-        encoder = new UTF8Encoding();
-        ws = new ClientWebSocket();
+        this.JWT = JWT;
+        ws.Options.AddSubProtocol(JWT);
 
-        serverUri = new Uri(serverURL);
+        ServerUri = new Uri(serverURL);
 
-        receiveQueue = new ConcurrentQueue<string>();
-        receiveThread = new Thread(RunReceive);
-        receiveThread.Start();
+        ReceiveQueue = new ConcurrentQueue<string>();
+        ReceiveThread = new Thread(RunReceiveAsync);
+        ReceiveThread.Start();
 
-        sendQueue = new BlockingCollection<ArraySegment<byte>>();
-        sendThread = new Thread(RunSend);
-        sendThread.Start();
+        SendQueue = new BlockingCollection<ArraySegment<byte>>();
+        SendThread = new Thread(RunSendAsync);
+        SendThread.Start();
     }
 
     public void Dispose()
     {
         ws.Dispose();
-        receiveThread.Abort();
-        sendThread.Abort();
+        ReceiveThread.Abort();
+        SendThread.Abort();
     }
 
     /// <summary>
-    /// Method which connects client to the server.
+    /// Method which connects ClientObject to the server.
     /// </summary>
-    public async Task Connect()
+    public async Task ConnectAsync()
     {
-        Debug.Log("Connecting to: " + serverUri);
-        await ws.ConnectAsync(serverUri, CancellationToken.None);
+        Debug.Log("Connecting to: " + ServerUri);
+        cts = new();
+        await ws.ConnectAsync(ServerUri, cts.Token);
         while (IsConnecting())
         {
             Debug.Log("Waiting to connect...");
@@ -74,16 +76,38 @@ public class WsClient : IDisposable
         Debug.Log("Connect status: " + ws.State);
     }
 
-    public async Task Close()
+    public async Task CloseAsync()
     {
-        Debug.Log("Closing connection to: " + serverUri);
-        await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Application Closed Normally", CancellationToken.None);
-        while (!IsClosed())
+        Debug.Log("WsClient CloseAsync.");
+        if (ws != null)
         {
-            Debug.Log("Waiting to close...");
-            Task.Delay(50).Wait();
+            try
+            {
+                // Cancel all async operations immediately
+                cts?.Cancel();
+
+                if (ws.State == WebSocketState.Open || ws.State == WebSocketState.CloseReceived)
+                {
+                    Debug.Log("Closing connection to: " + ServerUri);
+                    await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Application Closed Normally", CancellationToken.None);
+                    while (!IsClosed())
+                    {
+                        Debug.Log("Waiting to close...");
+                        Task.Delay(50).Wait();
+                    }
+                    Debug.Log("Connect status: " + ws.State);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.Log($"Error while closing WebSocket: {ex.Message}");
+            }
+            finally
+            {
+                Dispose();
+                cts?.Dispose();
+            }
         }
-        Debug.Log("Connect status: " + ws.State);
     }
 
     #region [Status]
@@ -129,25 +153,25 @@ public class WsClient : IDisposable
         //Debug.Log("Message to queue for send: " + buffer.Length + ", message: " + message);
         var sendBuf = new ArraySegment<byte>(buffer);
 
-        sendQueue.Add(sendBuf);
+        SendQueue.Add(sendBuf);
     }
 
     /// <summary>
     /// Method for other thread, which sends messages to the server.
     /// </summary>
-    private async void RunSend()
+    private async void RunSendAsync()
     {
         Debug.Log("WebSocket Message Sender looping.");
         ArraySegment<byte> msg;
         while (true)
         {
-            while (!sendQueue.IsCompleted)
+            while (!SendQueue.IsCompleted)
             {
-                msg = sendQueue.Take();
+                msg = SendQueue.Take();
                 //Debug.Log("Dequeued this message to send: " + msg);
                 try
                 {
-                    await ws.SendAsync(msg, WebSocketMessageType.Text, true /* is last part of message */, CancellationToken.None);
+                    await ws.SendAsync(msg, WebSocketMessageType.Text, true /* is last part of message */, cts.Token);
                 }
                 catch (Exception e)
                 {
@@ -166,7 +190,7 @@ public class WsClient : IDisposable
     /// </summary>
     /// <returns>The message.</returns>
     /// <param name="maxSize">Max size.</param>
-    private async Task<string> Receive(UInt64 maxSize = MAXREADSIZE)
+    private async Task<string> ReceiveAsync(UInt64 maxSize = MAXREADSIZE)
     {
         // A read buffer, and a memory stream to stuff unknown number of chunks into:
         byte[] buf = new byte[4 * 1024];
@@ -178,7 +202,7 @@ public class WsClient : IDisposable
         {
             do
             {
-                chunkResult = await ws.ReceiveAsync(arrayBuf, CancellationToken.None);
+                chunkResult = await ws.ReceiveAsync(arrayBuf, cts.Token);
                 ms.Write(arrayBuf.Array, arrayBuf.Offset, chunkResult.Count);
                 //Debug.Log("Size of Chunk message: " + chunkResult.Count);
                 if ((UInt64)(chunkResult.Count) > MAXREADSIZE)
@@ -202,17 +226,17 @@ public class WsClient : IDisposable
     /// <summary>
     /// Method for other thread, which receives messages from the server.
     /// </summary>
-    private async void RunReceive()
+    private async void RunReceiveAsync()
     {
         Debug.Log("WebSocket Message Receiver looping.");
         string result;
         while (true)
         {
-            //Debug.Log("Awaiting Receive...");
-            result = await Receive();
+            //Debug.Log("Awaiting ReceiveAsync...");
+            result = await ReceiveAsync();
             if (result != null && result.Length > 0)
             {
-                receiveQueue.Enqueue(result);
+                ReceiveQueue.Enqueue(result);
             }
             else
             {

@@ -206,7 +206,7 @@ public class GameManager : MonoBehaviour
         deathSound.Play();
         
         //TODO: fix this?
-        //client.GetComponent<ServerCommunication>().RetrieveUser();
+        //ClientObject.GetComponent<ServerCommunication>().RetrieveUser();
         client.GetComponent<ServerCommunication>().GetRoom(room.id);
     }
 
@@ -612,7 +612,8 @@ public class GameManager : MonoBehaviour
         client = GameObject.Find("Client");
         settings = GameObject.Find("Settings");
         ServerCommunication sc = client.GetComponent<ServerCommunication>();
-        yield return new WaitWhile(() => sc.isLoading);
+        yield return null;
+        //yield return new WaitWhile(() => sc.isLoading);
 
         user = sc.GetUser();
         room = sc.GetRoom();
@@ -620,15 +621,15 @@ public class GameManager : MonoBehaviour
         for (int i = 0; i < room.settings.wallsToStart; i++)
             AddWall();
 
-        sc.Lobby.OnGetRoom += OnGetRoom;
-        sc.Lobby.OnEatPellet += OnEatPellet;
-        sc.Lobby.OnDie += OnDie;
-        sc.Lobby.OnWin += OnWin;
-        sc.Lobby.OnReset += OnReset;
-        sc.Lobby.OnZoom += OnZoom;
-        sc.Lobby.OnSlow += OnSlow;
-        sc.Lobby.OnInvincible += OnInvincible;
-        sc.Lobby.OnGetGameState += OnGetGameState;
+        sc.Messaging.OnGetRoom += OnGetRoom;
+        sc.Messaging.OnEatPellet += OnEatPellet;
+        sc.Messaging.OnDie += OnDie;
+        sc.Messaging.OnWin += OnWin;
+        sc.Messaging.OnReset += OnReset;
+        sc.Messaging.OnZoom += OnZoom;
+        sc.Messaging.OnSlow += OnSlow;
+        sc.Messaging.OnInvincible += OnInvincible;
+        sc.Messaging.OnGetGameState += OnGetGameState;
 
         LoadSettings();
         gameTheme.Play();
@@ -670,14 +671,14 @@ public class GameManager : MonoBehaviour
     {
         ServerCommunication sc = client.GetComponent<ServerCommunication>();
 
-        sc.Lobby.OnGetRoom -= OnGetRoom;
-        sc.Lobby.OnEatPellet -= OnEatPellet;
-        sc.Lobby.OnDie -= OnDie;
-        sc.Lobby.OnWin -= OnWin;
-        sc.Lobby.OnReset -= OnReset;
-        sc.Lobby.OnZoom -= OnZoom;
-        sc.Lobby.OnInvincible -= OnInvincible;
-        sc.Lobby.OnGetGameState -= OnGetGameState;
+        sc.Messaging.OnGetRoom -= OnGetRoom;
+        sc.Messaging.OnEatPellet -= OnEatPellet;
+        sc.Messaging.OnDie -= OnDie;
+        sc.Messaging.OnWin -= OnWin;
+        sc.Messaging.OnReset -= OnReset;
+        sc.Messaging.OnZoom -= OnZoom;
+        sc.Messaging.OnInvincible -= OnInvincible;
+        sc.Messaging.OnGetGameState -= OnGetGameState;
 
         sc.SendReadyChange(true);
 
@@ -686,7 +687,7 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadSceneAsync("Lobby", LoadSceneMode.Single);
         
         //TODO: fix this?
-        //client.GetComponent<ServerCommunication>().RetrieveUser();
+        //ClientObject.GetComponent<ServerCommunication>().RetrieveUser();
     }
 
     IEnumerator ZoomCR()

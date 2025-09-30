@@ -83,12 +83,12 @@ public class LobbySceneScript : MonoBehaviour
     {
         ServerCommunication sc = client.GetComponent<ServerCommunication>();
 
-        sc.Lobby.OnSetReady -= OnSetReady;
-        sc.Lobby.OnChatMessage -= OnChatMessage;
-        sc.Lobby.OnStartGame -= OnStartGame;
-        sc.Lobby.OnJoinRoom -= OnJoinRoom;
-        sc.Lobby.OnLeaveRoom -= OnLeaveRoom;
-        sc.Lobby.OnDeleteRoom -= OnDeleteRoom;
+        sc.Messaging.OnSetReady -= OnSetReady;
+        sc.Messaging.OnChatMessage -= OnChatMessage;
+        sc.Messaging.OnStartGame -= OnStartGame;
+        sc.Messaging.OnJoinRoom -= OnJoinRoom;
+        sc.Messaging.OnLeaveRoom -= OnLeaveRoom;
+        sc.Messaging.OnDeleteRoom -= OnDeleteRoom;
 
     }
 
@@ -97,7 +97,8 @@ public class LobbySceneScript : MonoBehaviour
         client = GameObject.Find("Client");
         settings = GameObject.Find("Settings");
         ServerCommunication sc = client.GetComponent<ServerCommunication>();
-        yield return new WaitWhile(() => sc.isLoading);
+        yield return null;
+        //yield return new WaitWhile(() => sc.isLoading);
         messageField.onEndEdit.AddListener(SendChatMessage);
         sendBtn.onClick.AddListener(delegate
         {
@@ -116,12 +117,12 @@ public class LobbySceneScript : MonoBehaviour
             cardScript.SetUser(user);
         });
 
-        sc.Lobby.OnSetReady += OnSetReady;
-        sc.Lobby.OnChatMessage += OnChatMessage;
-        sc.Lobby.OnStartGame += OnStartGame;
-        sc.Lobby.OnJoinRoom += OnJoinRoom;
-        sc.Lobby.OnLeaveRoom += OnLeaveRoom;
-        sc.Lobby.OnDeleteRoom += OnDeleteRoom;
+        sc.Messaging.OnSetReady += OnSetReady;
+        sc.Messaging.OnChatMessage += OnChatMessage;
+        sc.Messaging.OnStartGame += OnStartGame;
+        sc.Messaging.OnJoinRoom += OnJoinRoom;
+        sc.Messaging.OnLeaveRoom += OnLeaveRoom;
+        sc.Messaging.OnDeleteRoom += OnDeleteRoom;
 
         LoadSettings();
         menuTheme.Play();
