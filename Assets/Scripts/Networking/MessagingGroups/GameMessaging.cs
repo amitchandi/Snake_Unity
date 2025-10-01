@@ -22,16 +22,8 @@ public class GameMessaging : BaseMessaging
     public UnityAction<EchoMessageModel> OnEchoMessage;
 
     public UnityAction<DataModel> OnGetGameState;
-    // On Get Room
-    public UnityAction<DataModel> OnGetRoom;
-    // On Join Room
-    public UnityAction<DataModel> OnJoinRoom;
-    // On Leave Room
-    public UnityAction<DataModel> OnLeaveRoom;
-    // On Delete Room
-    public UnityAction OnDeleteRoom;
-    // On Set Ready Status
-    public UnityAction<DataModel> OnSetReady;
+    // On Get Lobby
+    public UnityAction<DataModel> OnGetLobby;
 
     // On Chat Message
     public UnityAction<DataModel> OnChatMessage;
@@ -61,6 +53,9 @@ public class GameMessaging : BaseMessaging
 
     public const string LOBBY_JOINED = "lobbyJoined";
     public UnityAction<DataModel> OnLobbyJoined;
+
+    public const string LOBBY_DISCONNECTED = "lobbyDisconnected";
+    public UnityAction<DataModel> OnLobbyDisconnected;
 
     /// <summary>
     /// Sends echo message to the server.

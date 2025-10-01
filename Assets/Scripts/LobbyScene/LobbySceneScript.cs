@@ -83,12 +83,12 @@ public class LobbySceneScript : MonoBehaviour
     {
         ServerCommunication sc = client.GetComponent<ServerCommunication>();
 
-        sc.Messaging.OnSetReady -= OnSetReady;
-        sc.Messaging.OnChatMessage -= OnChatMessage;
-        sc.Messaging.OnStartGame -= OnStartGame;
-        sc.Messaging.OnJoinRoom -= OnJoinRoom;
-        sc.Messaging.OnLeaveRoom -= OnLeaveRoom;
-        sc.Messaging.OnDeleteRoom -= OnDeleteRoom;
+        //sc.Messaging.OnSetReady -= OnSetReady;
+        //sc.Messaging.OnChatMessage -= OnChatMessage;
+        //sc.Messaging.OnStartGame -= OnStartGame;
+        //sc.Messaging.OnJoinLobby -= OnJoinRoom;
+        //sc.Messaging.OnLeaveRoom -= OnLeaveRoom;
+        //sc.Messaging.OnDeleteRoom -= OnDeleteRoom;
 
     }
 
@@ -110,19 +110,19 @@ public class LobbySceneScript : MonoBehaviour
             sc.SendStartGame();
         });
 
-        sc.GetRoom().users.ForEach(user =>
-        {
-            var card = Instantiate(userCard, usersContainter.transform);
-            var cardScript = card.GetComponent<UserCard>();
-            cardScript.SetUser(user);
-        });
+        //sc.GetRoom().users.ForEach(user =>
+        //{
+        //    var card = Instantiate(userCard, usersContainter.transform);
+        //    var cardScript = card.GetComponent<UserCard>();
+        //    cardScript.SetUser(user);
+        //});
 
-        sc.Messaging.OnSetReady += OnSetReady;
-        sc.Messaging.OnChatMessage += OnChatMessage;
-        sc.Messaging.OnStartGame += OnStartGame;
-        sc.Messaging.OnJoinRoom += OnJoinRoom;
-        sc.Messaging.OnLeaveRoom += OnLeaveRoom;
-        sc.Messaging.OnDeleteRoom += OnDeleteRoom;
+        //sc.Messaging.OnSetReady += OnSetReady;
+        //sc.Messaging.OnChatMessage += OnChatMessage;
+        //sc.Messaging.OnStartGame += OnStartGame;
+        //sc.Messaging.OnJoinLobby += OnJoinRoom;
+        //sc.Messaging.OnLeaveRoom += OnLeaveRoom;
+        //sc.Messaging.OnDeleteRoom += OnDeleteRoom;
 
         LoadSettings();
         menuTheme.Play();

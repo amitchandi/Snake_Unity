@@ -39,10 +39,10 @@ public class ServerCommunication : MonoBehaviour
     string JWT { get; set; }
 
     User user = new();
-    Room room;
+    public GameLobby Lobby { get; set; } = new GameLobby();
     //
 
-    // Class with messages for "lobby"
+    // Class with messages for "Lobby"
     public GameMessaging Messaging { private set; get; }
 
     #region MonoBehaviour
@@ -132,12 +132,12 @@ public class ServerCommunication : MonoBehaviour
 
                 //case "getRoom":
                 //    room = message.data["room"].ToObject<Room>();
-                //    Messaging.OnGetRoom?.Invoke(message);
+                //    Messaging.OnGetLobby?.Invoke(message);
                 //    break;
                 //case "joinRoom":
                 //    room = message.data["room"].ToObject<Room>();
                 //    Debug.Log("Joined:" + room);
-                //    Messaging.OnJoinRoom?.Invoke(message);
+                //    Messaging.OnJoinLobby?.Invoke(message);
                 //    break;
                 //case "leaveRoom":
                 //    string userId = message.data["userId"].ToString();
@@ -215,7 +215,8 @@ public class ServerCommunication : MonoBehaviour
     /// </summary>
     public async Task CloseConnectionToServer()
     {
-        await client.CloseAsync();
+        if (client != null)
+            await client.CloseAsync();
         httpClient?.Dispose();
     }
 
@@ -252,7 +253,7 @@ public class ServerCommunication : MonoBehaviour
     {
         Send(Enum.GetName(typeof(Special), special), JObject.FromObject(new
         {
-            roomId = room.id,
+            lobbyId = Lobby.id,
             args = new
             {
                 userId = user.Id
@@ -263,11 +264,6 @@ public class ServerCommunication : MonoBehaviour
     public string GetName()
     {
         return user == null ? "" : user.Username;
-    }
-
-    public async Task<Dictionary<string, Room>> GetRooms()
-    {
-        return await GetRoomsRequest();
     }
 
     public void JoinRoom(string roomId)
@@ -283,7 +279,7 @@ public class ServerCommunication : MonoBehaviour
     {
         Send("leaveRoom", JObject.FromObject(new
         {
-            roomId = room.id,
+            lobbyId = Lobby.id,
             userId = user.Id
         }));
     }
@@ -292,7 +288,7 @@ public class ServerCommunication : MonoBehaviour
     {
         Send("chatMessage", JObject.FromObject(new
         {
-            roomId = room.id,
+            lobbyId = Lobby.id,
             args = new
             {
                 username = user.Username,
@@ -308,7 +304,7 @@ public class ServerCommunication : MonoBehaviour
             Send("setReadyStatus", JObject.FromObject(new
             {
                 userId = user.Id,
-                roomId = room.id,
+                lobbyId = Lobby.id,
                 args = new
                 {
                     userId = user.Id,
@@ -321,7 +317,7 @@ public class ServerCommunication : MonoBehaviour
             Send("setReadyStatus", JObject.FromObject(new
             {
                 userId = user.Id,
-                roomId = room.id,
+                lobbyId = Lobby.id,
                 args = new
                 {
                     userId = user.Id,
@@ -335,7 +331,7 @@ public class ServerCommunication : MonoBehaviour
     {
         Send("startGame", JObject.FromObject(new
         {
-            roomId = room.id,
+            lobbyId = Lobby.id,
             args = new
             {
 
@@ -347,7 +343,7 @@ public class ServerCommunication : MonoBehaviour
     {
         Send("eatPellet", JObject.FromObject(new
         {
-            roomId = room.id,
+            lobbyId = Lobby.id,
             args = new
             {
                 userId = user.Id,
@@ -384,7 +380,7 @@ public class ServerCommunication : MonoBehaviour
         Send("die", JObject.FromObject(new
         {
             userId = user.Id,
-            roomId = room.id,
+            lobbyId = Lobby.id,
             args = new
             {
                 userId = user.Id,
@@ -402,25 +398,6 @@ public class ServerCommunication : MonoBehaviour
                 msg = "asd"
             }
         }));
-    }
-
-    public async Task<Room> CreateRoom(int wallsToStart)
-    {
-        room = await CreateRoomRequest(user.Username + "'s Room", true, user.Id, wallsToStart);
-        return room;
-    }
-
-    public void GetRoom(string roomId)
-    {
-        Send("getRoom", JObject.FromObject(new
-        {
-            roomId,
-        }));
-    }
-
-    public Room GetRoom()
-    {
-        return room;
     }
 
     public User GetUser()
@@ -482,12 +459,7 @@ public class ServerCommunication : MonoBehaviour
     #endregion
 
     #region [HTTP]
-
-    private async Task<string> GetTokenRequest()
-    {
-        return await httpClient.GetToken();
-    }
-
+    
     private async Task<User> GetUserRequest(string deviceId)
     {
         var user = await httpClient.GetUser(deviceId);
@@ -495,22 +467,6 @@ public class ServerCommunication : MonoBehaviour
             return null;
         else
             return JsonConvert.DeserializeObject<User>(user);
-    }
-
-    private async Task<Dictionary<string, Room>> GetRoomsRequest()
-    {
-        var x = await httpClient.GetRooms();
-        return JsonConvert.DeserializeObject<Dictionary<string, Room>>(x);
-    }
-
-    private async Task<string> CreateUserRequest(string deviceId, string name)
-    {
-        return await httpClient.CreateUser(deviceId, name);
-    }
-
-    private async Task<Room> CreateRoomRequest(string roomName, bool isGameRoom, string ownerId, int wallsToStart)
-    {
-        return JsonConvert.DeserializeObject<Room>(await httpClient.CreateRoom(roomName, isGameRoom, ownerId, wallsToStart));
     }
 
     private async Task<bool> UpdateUsernameRequest(string name, string newUsername)

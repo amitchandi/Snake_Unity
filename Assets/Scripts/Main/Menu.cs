@@ -2,8 +2,10 @@
 using System;
 using System.Collections;
 using System.ComponentModel;
+using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Audio;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using static TMPro.TMP_Dropdown;
@@ -20,7 +22,6 @@ public class Menu : MonoBehaviour
     public TMP_InputField registerPasswordField;
     public TMP_InputField registerPasswordConfirmField;
 
-    public GameObject Lobby;
     public GameObject resolutionRow;
     
     public Slider BGM_Slider;
@@ -31,9 +32,11 @@ public class Menu : MonoBehaviour
 
     public Toggle isFullscreen;
 
+    public AudioMixer MainMixer;
+    
     public AudioSource menuClick;
     public AudioSource menuTheme;
-    public AudioSource wallDropSound;
+    public AudioSource testSFX;
 
     public GameObject MainMenu;
     public GameObject FindGameMenu;
@@ -79,33 +82,28 @@ public class Menu : MonoBehaviour
         SettingsObject = GameObject.Find("Settings");
         SettingsScript = SettingsObject.GetComponent<Settings>();
 
-        yield return null;
-        //yield return new WaitWhile(() => ServerCommunication.isLoading);
         usernameField.onValueChanged.AddListener(UpdateName);
         
         //TODO: Implement auto login
-        //string name = sc.GetName();
-        //usernameField.SetTextWithoutNotify(name);
 
         LoadSettings();
 
-        BGM_Slider.onValueChanged.AddListener((float volume) =>
+        BGM_Slider.onValueChanged.AddListener(volume =>
         {
             SettingsScript.ChangeBGMVolume(volume);
-            menuTheme.volume = volume * 0.5f;
+            MainMixer.SetFloat("BGMVolume", Mathf.Log10(volume) * 20);
         });
 
-        SFX_Slider.onValueChanged.AddListener((float volume) =>
+        SFX_Slider.onValueChanged.AddListener(volume =>
         {
             SettingsScript.ChangeSFXVolume(volume);
-            wallDropSound.volume = volume * 0.5f;
-            wallDropSound.time = 0.5f;
-            wallDropSound.Play();
+            MainMixer.SetFloat("SFXVolume", Mathf.Log10(volume) * 20);
+            testSFX.Play();
         });
 
         resDropdown.options.AddRange(Array.ConvertAll(Screen.resolutions, res => new OptionData(res.ToString())));
 
-        resDropdown.onValueChanged.AddListener((int index) =>
+        resDropdown.onValueChanged.AddListener(index =>
         {
             Resolution resolution = Screen.resolutions[index];
             SettingsScript.ChangeScreenResolution(resolution);
@@ -117,13 +115,13 @@ public class Menu : MonoBehaviour
 
         fullsDropdown.options.AddRange(Array.ConvertAll(Enum.GetNames(typeof(FullScreenMode)), mode => new OptionData(mode)));
 
-        fullsDropdown.onValueChanged.AddListener((int index) =>
+        fullsDropdown.onValueChanged.AddListener(index =>
         {
             SettingsScript.ChangeFullscreen(isFullscreen.isOn, (FullScreenMode)index);
             Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, (FullScreenMode)index, Screen.currentResolution.refreshRateRatio);
         });
 
-        isFullscreen.onValueChanged.AddListener((bool isFullscreen) =>
+        isFullscreen.onValueChanged.AddListener(isFullscreen =>
         {
             SettingsScript.ChangeFullscreen(isFullscreen, (FullScreenMode)fullsDropdown.value);
             if (isFullscreen)
@@ -134,24 +132,13 @@ public class Menu : MonoBehaviour
         });
 
         menuTheme.Play();
+        yield return null;
     }
 
-    //IEnumerator LoadLobby()
-    //{
-    //    yield return new WaitWhile(() => ServerCommunication.GetRoom() == null);
-    //    SceneManager.LoadSceneAsync("Lobby", LoadSceneMode.Single);
-    //}
-
-    void UpdateName(string name)
+    private void UpdateName(string name)
     {
         ServerCommunication.UpdateUsername(name);
     }
-
-    //public void StartLobby()
-    //{
-    //    StartCoroutine(LoadLobby());
-    //}
-
 
     public void LoadSettings()
     {
@@ -159,7 +146,9 @@ public class Menu : MonoBehaviour
         float SFX_Volume = SettingsScript.savedSettings.SFX_Volume;
         BGM_Slider.value = BGM_Volume;
         SFX_Slider.value = SFX_Volume;
-        menuTheme.volume = BGM_Volume * 0.5f;
+
+        MainMixer.SetFloat("BGMVolume", Mathf.Log10(BGM_Volume) * 20);
+        MainMixer.SetFloat("SFXVolume", Mathf.Log10(SFX_Volume) * 20);
 
         if (Application.platform != RuntimePlatform.Android && Application.platform != RuntimePlatform.IPhonePlayer)
         {
@@ -224,17 +213,50 @@ public class Menu : MonoBehaviour
         Debug.Log("InitGameMessaging");
         Debug.Log(ServerCommunication.Messaging);
         ServerCommunication.Messaging.OnStartGame += OnStartGame;
+        ServerCommunication.Messaging.OnLobbyJoined += OnLobbyJoined;
+        ServerCommunication.Messaging.OnLobbyDisconnected += OnLobbyDisconnected;
+        ServerCommunication.Messaging.OnLobbyPlayers += OnLobbyPlayers;
     }
 
     private void ResetGameMessaging()
     {
+        if (ServerCommunication == null || ServerCommunication.Messaging == null) return;
+
         ServerCommunication.Messaging.OnStartGame -= OnStartGame;
+        ServerCommunication.Messaging.OnLobbyJoined -= OnLobbyJoined;
+        ServerCommunication.Messaging.OnLobbyDisconnected -= OnLobbyDisconnected;
+        ServerCommunication.Messaging.OnLobbyPlayers -= OnLobbyPlayers;
     }
 
     private void OnStartGame()
     {
         Debug.Log("Start Game");
         SceneManager.LoadSceneAsync(Scenes.GAME, LoadSceneMode.Single);
+        MyLobby.Lobby = ServerCommunication.Lobby;
+    }
+
+    private void OnLobbyJoined(DataModel message)
+    {
+        Debug.Log("Lobby Joined");
+        Debug.Log(message);
+        ServerCommunication.Lobby = message.data["lobby"].ToObject<GameLobby>();
+    }
+
+    private void OnLobbyDisconnected(DataModel message)
+    {
+        Debug.Log("Lobby Disconnected");
+        Debug.Log(message);
+    }
+
+    private void OnLobbyPlayers(DataModel message)
+    {
+        Debug.Log("Lobby Players");
+        Debug.Log(message);
+        foreach (var item in message.data["players"].Values<string>().ToArray())
+        {
+            Debug.Log(item);
+        }
+        ServerCommunication.Lobby.players = message.data["players"].Values<string>().ToArray();
     }
     #endregion
 }

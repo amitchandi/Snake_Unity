@@ -80,14 +80,14 @@ public class GameManager : MonoBehaviour
     GameObject settings;
 
     User user;
-    Room room;
+    GameLobby Lobby { get; set; }
 
     List<int> snakePos;
     List<int> wallPos;
     List<GameObject> tiles;
     int pellet = -1;
     int special = -1;
-    System.Random random = new System.Random();
+    private readonly System.Random random = new();
     Directions direction = Directions.DOWN;
     Directions nextDirection = Directions.DOWN;
     bool isGameRunning = false;
@@ -107,6 +107,9 @@ public class GameManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        Lobby = MyLobby.Lobby;
+        PlayerCount.SetText("Players #: " + Lobby.playerObjects.Count);
+
         messages = Instantiate(toast, GameObject.Find("Panel").transform);
 
         spectateName.gameObject.SetActive(false);
@@ -149,10 +152,13 @@ public class GameManager : MonoBehaviour
             {
                 if (spectatorGameState == null)
                 {
-                    User su = room.users.Find(u =>
-                    {
-                        return u.Id != user.Id && u.Username != "Mama Snake";
-                    });
+                    //User su = Lobby.playerObjects.Find(u =>
+                    //{
+                    //    return u.Id != user.Id && u.Username != "Mama Snake";
+                    //});
+                    //TODO implement
+                    string someUserId = "";
+                    User su = Lobby.playerObjects[someUserId];
                     client.GetComponent<ServerCommunication>().SendGetGameState(su.Id);
                 }
                 else
@@ -195,11 +201,6 @@ public class GameManager : MonoBehaviour
     #endregion
 
     #region [Events]
-    void OnGetRoom(DataModel message)
-    {
-        room = message.data["room"].ToObject<Room>();
-    }
-    
     void OnDie(DataModel message)
     {
         messages.GetComponent<Toast>().ShowToast(message.data["args"]["username"].ToObject<string>() + " Has Died\nDummy", 2);
@@ -207,7 +208,7 @@ public class GameManager : MonoBehaviour
         
         //TODO: fix this?
         //ClientObject.GetComponent<ServerCommunication>().RetrieveUser();
-        client.GetComponent<ServerCommunication>().GetRoom(room.id);
+        //client.GetComponent<ServerCommunication>().GetRoom(room.id);
     }
 
     void OnWin(DataModel message)
@@ -275,14 +276,15 @@ public class GameManager : MonoBehaviour
     #region [Public Methods]
     public void ChangeSpectating(float val)
     {
-        int index = room.users.FindIndex(user =>
-        {
-            return user.Id == spectatorGameState.userId;
-        });
+        //int index = Lobby.players.FindIndex(user =>
+        //{
+        //    return user.Id == spectatorGameState.userId;
+        //});
+        int index = Array.IndexOf(Lobby.players, spectatorGameState.userId);
 
         if (val == 1)
         {
-            if (index == room.users.Count - 1)
+            if (index == Lobby.players.Length - 1)
                 index = 0;
             else
                 index++;
@@ -290,15 +292,15 @@ public class GameManager : MonoBehaviour
         else
         {
             if (index == 0)
-                index = room.users.Count - 1;
+                index = Lobby.players.Length - 1;
             else
                 index--;
         }
 
-        if (room.users[index].Username == "Mama Snake")
+        if (Lobby.players[index] == "Mama Snake")
             ChangeSpectating(val);
         else
-            spectatorGameState.userId = room.users[index].Id;
+            spectatorGameState.userId = Lobby.players[index];
     }
 
     public void ChangeDirection(Directions dir)
@@ -580,22 +582,6 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    void LoadSettings()
-    {
-        float BGM_Volume = settings.GetComponent<Settings>().savedSettings.BGM_Volume;
-        float SFX_Volume = settings.GetComponent<Settings>().savedSettings.SFX_Volume;
-        gameTheme.volume = BGM_Volume * 0.5f;
-        gameTheme.volume = BGM_Volume * 0.5f;
-
-        zoomSound.volume = SFX_Volume * 0.5f;
-        deathSound.volume = SFX_Volume * 0.5f;
-        munchSound.volume = SFX_Volume * 0.5f;
-        specialSound.volume = SFX_Volume * 0.5f;
-        gameWinSound.volume = SFX_Volume * 0.5f;
-        wallDropSound.volume = SFX_Volume * 0.5f;
-        crunchSound.volume = SFX_Volume * 0.5f;
-    }
-
     void GameOver()
     {
         controls.Player.Movement.Disable();
@@ -616,12 +602,13 @@ public class GameManager : MonoBehaviour
         //yield return new WaitWhile(() => sc.isLoading);
 
         user = sc.GetUser();
-        room = sc.GetRoom();
 
-        for (int i = 0; i < room.settings.wallsToStart; i++)
+        for (int i = 0; i < Lobby.wallsToStart; i++)
             AddWall();
 
-        sc.Messaging.OnGetRoom += OnGetRoom;
+        //sc.Messaging.OnGetLobby += OnGetLobby;
+        //TODO: OnGetLobby should be changed to OnGetLobby or something
+
         sc.Messaging.OnEatPellet += OnEatPellet;
         sc.Messaging.OnDie += OnDie;
         sc.Messaging.OnWin += OnWin;
@@ -631,7 +618,6 @@ public class GameManager : MonoBehaviour
         sc.Messaging.OnInvincible += OnInvincible;
         sc.Messaging.OnGetGameState += OnGetGameState;
 
-        LoadSettings();
         gameTheme.Play();
 
         for (int x = 0; x < 300; x++)
@@ -671,7 +657,9 @@ public class GameManager : MonoBehaviour
     {
         ServerCommunication sc = client.GetComponent<ServerCommunication>();
 
-        sc.Messaging.OnGetRoom -= OnGetRoom;
+        //sc.Messaging.OnGetLobby -= OnGetLobby;
+        //TODO: OnGetLobby should be changed to OnGetLobby or something
+
         sc.Messaging.OnEatPellet -= OnEatPellet;
         sc.Messaging.OnDie -= OnDie;
         sc.Messaging.OnWin -= OnWin;
